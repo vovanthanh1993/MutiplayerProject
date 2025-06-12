@@ -1,203 +1,162 @@
-﻿using Fusion;
+﻿using UnityEngine;
+using UnityEngine.UI;
+using Fusion;
 using Fusion.Sockets;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks; // Cần thiết cho các hàm bất đồng bộ (async/await)
-using TMPro;
-using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using TMPro;
 
 public class LobbyManager : MonoBehaviour, INetworkRunnerCallbacks
 {
     [Header("UI Elements")]
-    [SerializeField] private TMP_InputField _roomNameInput;
-    [SerializeField] private Transform _roomListContent; // Content object của ScrollView
-    [SerializeField] private GameObject _roomItemPrefab;
-    [SerializeField] private GameObject _statusTextObject; // UI Text để hiển thị thông báo (ví dụ: "Đang kết nối...")
-    [SerializeField] private GameObject _refreshButton;    // Nút Refresh để gán vào đây
+    [SerializeField] private TMP_InputField _roomInput;
+    [SerializeField] private Button _createButton;
+    [SerializeField] private Button _joinButton;
+    [SerializeField] private GameObject _roomButtonPrefab;
+    [SerializeField] private Transform _roomListParent;
+    [SerializeField] private TextMeshProUGUI _statusText;
 
-    [Header("Game Scene")]
-    [Tooltip("Chỉ số của Scene Game trong Build Settings")]
+    [Header("Game Setup")]
+    [SerializeField] private GameObject _playerPrefab;
     [SerializeField] private int _gameSceneIndex = 1;
 
     private NetworkRunner _runner;
-    private bool _isRefreshing = false; // Cờ để ngăn người dùng nhấn refresh liên tục
 
     private async void Start()
     {
-        // Giữ lại GameObject chứa script này khi chuyển scene, để NetworkRunner không bị hủy
-        DontDestroyOnLoad(gameObject);
+        // Update UI to show lobby connection status
+        if (_statusText != null)
+            _statusText.text = "🔄 Connecting to Lobby...";
 
         _runner = gameObject.AddComponent<NetworkRunner>();
-        _runner.ProvideInput = true; // Cần thiết để xử lý input trong game
-        _runner.AddCallbacks(this);
+        _runner.ProvideInput = true;
 
-        // Bắt đầu kết nối vào sảnh chờ
-        await JoinLobby();
+        await _runner.JoinSessionLobby(SessionLobby.ClientServer);
+
+        if (_statusText != null)
+            _statusText.text = "🟢 Connected to Lobby!";
+
+        // Attach button click events
+        _createButton?.onClick.AddListener(() => StartGame(_roomInput.text, GameMode.Host));
+        _joinButton?.onClick.AddListener(() => StartGame(_roomInput.text, GameMode.Client));
     }
 
-    /// <summary>
-    /// Kết nối vào sảnh chờ chung để lấy danh sách các phòng.
-    /// </summary>
-    private async Task JoinLobby()
+    public async void StartGame(string roomName, GameMode mode)
     {
-        if (_statusTextObject) _statusTextObject.GetComponent<TMP_Text>().text = "Đang kết nối vào sảnh...";
-        if (_refreshButton) _refreshButton.SetActive(false); // Ẩn nút refresh trong khi kết nối  
+        // Display current joining/creating status
+        if (_statusText != null)
+            _statusText.text = $"🔄 {(mode == GameMode.Host ? "Creating" : "Joining")} room: {roomName}...";
 
-        // Sử dụng SessionLobby.ClientServer thay vì SessionLobby.Default  
-        var result = await _runner.JoinSessionLobby(SessionLobby.ClientServer);
-
-        if (result.Ok)
+        if (_runner == null)
         {
-            if (_statusTextObject) _statusTextObject.GetComponent<TMP_Text>().text = "Đã kết nối! Hãy chọn một phòng.";
-        }
-        else
-        {
-            if (_statusTextObject) _statusTextObject.GetComponent<TMP_Text>().text = $"Lỗi kết nối sảnh: {result.ShutdownReason}";
+            _runner = gameObject.AddComponent<NetworkRunner>();
+            _runner.ProvideInput = true;
         }
 
-        // Sau khi hoàn tất, hiện lại nút refresh và đặt lại cờ  
-        if (_refreshButton) _refreshButton.SetActive(true);
-        _isRefreshing = false;
-    }
+        var sceneInfo = new NetworkSceneInfo();
+        sceneInfo.AddSceneRef(SceneRef.FromIndex(_gameSceneIndex));
 
-    /// <summary>
-    /// HÀM MỚI: Được gọi bởi Button Refresh trên UI.
-    /// </summary>
-    public async void OnRefreshButtonPressed()
-    {
-        if (_isRefreshing) return; // Nếu đang refresh thì không làm gì cả
-
-        _isRefreshing = true;
-
-        // Rời sảnh hiện tại và kết nối lại để lấy danh sách mới
-        await JoinLobby();
-    }
-
-    /// <summary>
-    /// Được gọi bởi Button UI để tạo một phòng mới.
-    /// </summary>
-    public async void CreateRoom()
-    {
-        string roomName = _roomNameInput.text;
-        if (string.IsNullOrEmpty(roomName))
+        await _runner.StartGame(new StartGameArgs
         {
-            Debug.LogError("Tên phòng không được để trống!");
-            return;
-        }
-
-        if (_statusTextObject) _statusTextObject.GetComponent<TMP_Text>().text = $"Đang tạo phòng '{roomName}'...";
-
-        // Correctly set the Scene property using NetworkSceneInfo
-        var activeSceneIndex = SceneManager.GetActiveScene().buildIndex + 1;
-        var sceneRef = SceneRef.FromIndex(activeSceneIndex); // Create SceneRef from index
-        var sceneInfo = new NetworkSceneInfo(); // Create a new NetworkSceneInfo instance
-        sceneInfo.AddSceneRef(sceneRef); // Use AddSceneRef method to add the scene
-        var result = await _runner.StartGame(new StartGameArgs()
-
-        {
-            GameMode = GameMode.Host,       // Tạo phòng mới
-            SessionName = roomName,         // Tên phòng
-            Scene = sceneInfo,              // Correctly set the scene
-            PlayerCount = 4,                // Số người chơi tối đa
-        });
-
-        if (!result.Ok)
-        {
-            Debug.LogError($"Tạo phòng thất bại: {result.ShutdownReason}");
-            if (_statusTextObject) _statusTextObject.GetComponent<TMP_Text>().text = $"Tạo phòng thất bại: {result.ShutdownReason}";
-        }
-    }
-
-    /// <summary>
-    /// Được gọi bởi Button UI của mỗi item trong danh sách phòng.
-    /// </summary>
-    private async void JoinRoom(SessionInfo session)
-    {
-        if (_statusTextObject) _statusTextObject.GetComponent<TMP_Text>().text = $"Đang vào phòng '{session.Name}'...";
-        await _runner.StartGame(new StartGameArgs()
-        {
-            GameMode = GameMode.Client,
-            SessionName = session.Name
+            GameMode = mode,
+            SessionName = roomName,
+            Scene = sceneInfo,
+            PlayerCount = 4,
+            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         });
     }
 
-    /// <summary>
-    /// Callback được Fusion gọi mỗi khi có sự thay đổi trong danh sách phòng của sảnh.
-    /// </summary>
+    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+    {
+        /*if(runner.IsServer) {
+            Transform spawnPoint = SpawnPointManager.Instance?.GetNextSpawnPoint();
+            Vector3 spawnPosition = spawnPoint != null ? spawnPoint.position : Vector3.zero;
+            Quaternion spawnRotation = spawnPoint != null ? spawnPoint.rotation : Quaternion.identity;
+
+            runner.Spawn(_playerPrefab, spawnPosition, spawnRotation, player);
+        }*/
+
+        if (runner.IsServer)
+        {
+            // Random position in a rectangle area
+            float x = 10f;
+            float z = 10f;
+            float y = 30f; // hoặc mặt đất tùy theo game bạn
+
+            Vector3 spawnPosition = new Vector3(x, y, z);
+            Quaternion spawnRotation = Quaternion.identity;
+
+            Debug.Log($"[Spawn] Player {player.PlayerId} at {spawnPosition}");
+
+            runner.Spawn(_playerPrefab, spawnPosition, spawnRotation, player);
+        }
+    }
+
+
+
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
     {
-        // Xóa các item phòng cũ trên UI
-        foreach (Transform child in _roomListContent)
+        if (_statusText != null)
+            _statusText.text = $"📋 Found {sessionList.Count} rooms.";
+
+        // Clear current room list
+        foreach (Transform child in _roomListParent)
         {
             Destroy(child.gameObject);
         }
 
-        // Cập nhật thông báo
-        if (_statusTextObject)
-        {
-            _statusTextObject.GetComponent<TMP_Text>().text = sessionList.Count == 0 ? "Không có phòng nào. Hãy tạo một phòng mới!" : "Chọn một phòng để vào:";
-        }
-
-        // Vẽ lại danh sách phòng mới
+        // Populate room list with updated sessions
         foreach (var session in sessionList)
         {
-            if (session.IsOpen)
+            GameObject buttonObject = Instantiate(_roomButtonPrefab, _roomListParent);
+            TextMeshProUGUI buttonText = buttonObject.GetComponentInChildren<TextMeshProUGUI>();
+
+            buttonText.text = $"{session.Name} ({session.PlayerCount}/{session.MaxPlayers})";
+
+            buttonObject.GetComponent<Button>().onClick.AddListener(() =>
             {
-                GameObject roomItemGO = Instantiate(_roomItemPrefab, _roomListContent);
-                // Tìm đối tượng Text con một cách an toàn hơn, tránh lỗi nếu đổi tên
-                var roomNameText = roomItemGO.GetComponentInChildren<TMP_Text>();
-                if (roomNameText) roomNameText.text = session.Name;
-
-                roomItemGO.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(() => JoinRoom(session));
-            }
+                StartGame(session.Name, GameMode.Client);
+            });
         }
     }
 
-    public void OnInput(NetworkRunner runner, NetworkInput input)
+    #region Fusion Callbacks
+    public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason)
     {
-        var data = new NetworkInputData();
-
-        // Đọc input từ bàn phím/gamepad
-        data.moveDirection = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
-        if (Input.GetButtonDown("Jump"))
-        {
-            data.buttons.Set(InvectorButtons.Jump, true);
-        }
-
-        // Đưa dữ liệu cho Fusion
-        input.Set(data);
+        if (_statusText != null)
+            _statusText.text = $"❌ Connection failed: {reason}";
     }
 
-    #region Unused Callbacks (Để trống)
-    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player) { }
-    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
-    public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
-    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
+    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
+    {
+        if (_statusText != null)
+            _statusText.text = $"🔌 Disconnected: {reason}";
+    }
+
+
     public void OnConnectedToServer(NetworkRunner runner) { }
-    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
-    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
-    public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
+    public void OnDisconnectedFromServer(NetworkRunner runner) { }
+    public void OnInput(NetworkRunner runner, NetworkInput input) { }
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
+    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
+    public void OnConnectedToServer(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
+    public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
+    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, System.ArraySegment<byte> data) { }
+
+    public void OnSceneLoadDone(NetworkRunner runner)
+    {
+        if (_statusText != null)
+            _statusText.text = "✅ Scene loaded successfully.";
+    }
+
+    public void OnSceneLoadStart(NetworkRunner runner) { }
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
+    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
+    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
     public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
     public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
-    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
-    public void OnSceneLoadDone(NetworkRunner runner) { }
-    public void OnSceneLoadStart(NetworkRunner runner) { }
-
-    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-    {
-        
-    }
-
-    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-    {
-        
-    }
-
-    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress)
-    {
-        
-    }
     #endregion
 }
