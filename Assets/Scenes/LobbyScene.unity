@@ -493,7 +493,7 @@ MonoBehaviour:
   _roomButtonPrefab: {fileID: 3847423307806402649, guid: a3197f11780cd3e4585d33b4199f3494, type: 3}
   _roomListParent: {fileID: 397942466}
   _statusText: {fileID: 1392185116}
-  _playerPrefab: {fileID: 8583884342492566861, guid: 1dde6573befe1d64eb57d910afc690d1, type: 3}
+  _playerPrefab: {fileID: 7968696924752004, guid: c76528bc0fbe74d408d70b1630d5ba78, type: 3}
   _gameSceneIndex: 1
 --- !u!1 &360778475
 GameObject:
@@ -1491,6 +1491,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 793342768}
   m_CullTransparentMesh: 1
+--- !u!1 &807125975
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 807125976}
+  m_Layer: 0
+  m_Name: GUIMANAGER
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &807125976
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 807125975}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 64.441864, y: 6.765168, z: 31.521217}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1172762122
 GameObject:
   m_ObjectHideFlags: 0
@@ -2932,3 +2963,4 @@ SceneRoots:
   - {fileID: 1172762126}
   - {fileID: 127834846}
   - {fileID: 284603280}
+  - {fileID: 807125976}
