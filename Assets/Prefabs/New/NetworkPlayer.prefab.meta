@@ -1,10 +1,7 @@
 fileFormatVersion: 2
 guid: 35d11d1e1dd397942b5024ee78060e27
-PrefabImporter:
-  externalObjects: {}
-  userData: 
-  assetBundleName: 
-  assetBundleVariant: 
+labels:
+- FusionPrefab
 AssetOrigin:
   serializedVersion: 1
   productId: 161846
@@ -12,3 +9,8 @@ AssetOrigin:
   packageVersion: 1.95
   assetPath: Assets/Easy Primitive People/Prefab/Cop.prefab
   uploadId: 457957
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
