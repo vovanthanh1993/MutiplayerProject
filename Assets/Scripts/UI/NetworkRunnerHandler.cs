@@ -78,8 +78,9 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         NetworkInputData inputData = new NetworkInputData
         {
             Horizontal = InputBuffer.Instance.Horizontal,
-            Vertical = InputBuffer.Instance.Vertical
-        };
+            Vertical = InputBuffer.Instance.Vertical,
+            Jump = InputBuffer.Instance.Jump
+};
 
         input.Set(inputData);
     }

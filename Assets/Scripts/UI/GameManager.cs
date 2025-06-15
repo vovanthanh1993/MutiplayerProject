@@ -39,8 +39,5 @@ public class GameManager : MonoBehaviour
 
         // Spawn the player using NetworkPrefabRef and assign input authority
         var playerObj = runner.Spawn(_playerPrefabRef, spawnPosition, Quaternion.identity, player);
-
-        // Set player name from server side
-        playerObj.GetComponent<PlayerController>().PlayerName = $"Player {player.PlayerId}";
     }
 }

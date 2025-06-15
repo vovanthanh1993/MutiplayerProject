@@ -9,6 +9,7 @@ public class InputBuffer : MonoBehaviour
 
     public float Horizontal { get; private set; }
     public float Vertical { get; private set; }
+    public bool Jump { get; private set; }
 
     private void Awake()
     {
@@ -27,5 +28,6 @@ public class InputBuffer : MonoBehaviour
         // Collect input every Unity frame
         Horizontal = Input.GetAxis("Horizontal");
         Vertical = Input.GetAxis("Vertical");
+        Jump = Input.GetKeyDown(KeyCode.Space);
     }
 }
